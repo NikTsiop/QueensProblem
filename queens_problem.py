@@ -1,215 +1,157 @@
 #!/qp_env/Scripts/python.exe
-import numpy as np
-import random as rd
-import logging
+import random
+import matplotlib.pyplot as plt
 
-#logger
-logging.basicConfig(filename="logs.log", filemode="w", format="%(name)s - %(levelname)s - %(message)s")
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
-#Threat range DL,DR : down left/righ diagonal UL, UR: up left/right diagonal, left and right
-THREAD_RANGE = ["DL", "DR", "UL", "UR", "R", "L"]
-
-class Queen:
-    def __init__(self, position, current, threats):
-        self.old_position = position
-        self.current = current
-        self.threats = threats
-
-queen_moves = 0
-
-def search_neighbor_threats(board, position, orientation):
-    x, y = position
+class NQueens:
     
-    # Start checking from the next cell in the given direction
-    if orientation == "DL":
-        x, y = x - 1, y + 1
-    elif orientation == "DR":
-        x, y = x + 1, y + 1
-    elif orientation == "UL":
-        x, y = x - 1, y - 1
-    elif orientation == "UR":
-        x, y = x + 1, y - 1
-    elif orientation == "R":
-        x, y = x + 1, y
-    elif orientation == "L":
-        x, y = x - 1, y
+    success_times = 0
+    lateral_steps_limit = 0
     
-    max_size = board.shape[0]
-    threats = 0
-    while 0 <= x < max_size and 0 <= y < max_size :
-            if board[x][y] == 1:
-                threats += 1
-                logger.debug(f"Found threat: {x},{y}")
+    def __init__(self, size):
+        self.size = size
+        self.board = [-1] * size
+        self.moves_made = 0
+        self.threats = 0
+
+    def initialize(self, random_place):
+        """Randomly place queens on the board or all the queens in the bottom"""
+        if random_place:
+            for col in range(self.size):
+                self.board[col] = random.randint(0, self.size - 1)
+        else:
+            for col in range(self.size):
+                self.board[col] = self.size-1
+
+    def calculate_threats(self):
+        """Calculate the number of threats."""
+        threats = 0
+        for i in range(self.size):
+            for j in range(i + 1, self.size):
+                if self.board[i] == self.board[j] or \
+                   abs(self.board[i] - self.board[j]) == j - i:
+                    threats += 1
+        return threats
+
+    def hill_climbing(self, max_iterations):
+        """Hill climbing algorithm."""
+        current_threats = self.calculate_threats()
+        for _ in range(max_iterations):
+            moves = []
+            for i in range(self.size):
+                for j in range(self.size):
+                    if j != self.board[i]:
+                        # Calculate threats if we move the queen
+                        original_value = self.board[i]
+                        self.board[i] = j
+                        new_threats = self.calculate_threats()
+                        if new_threats < current_threats:
+                            moves.append((i, j, new_threats))
+                        self.board[i] = original_value
+
+            if not moves:
                 break
-            else:
-                if orientation == "DL":
-                    x, y = (x - 1, y + 1)
-                elif orientation == "DR":
-                    x, y = (x + 1, y + 1)
-                elif orientation == "UL":
-                    x, y = (x - 1, y - 1)
-                elif orientation == "UR":
-                    x, y = (x + 1, y - 1)
-                elif orientation == "R":
-                    x, y = (x + 1, y)
-                elif orientation == "L":
-                    x, y = (x - 1, y)
-    return threats
 
-def calculate_threats(queen, board, size):
-    """Calculate the threats in the neighbors positions"""
-    logger.debug("$$ Calculate threats In $$")
-    next_x, next_y = queen.current[0], queen.current[1]
-    logger.debug(f"Next x,y:{next_x},{next_y}")
-    #check if should go up or down
-    if (queen.current[1]-1) < 0:
-        logger.debug("Going down")
-        next_y = queen.current[1] + 1
-        logger.debug(f"Looking down on the position {next_x},{next_y}")
-    elif (queen.current[1]+1) > size-1:
-        logger.debug("Going up")
-        next_y = queen.current[1] - 1
-        logger.debug(f"Looking up on the position {next_x},{next_y}")
-    else:
-        logger.debug("Random choice")
-        next_y = queen.current[1] + rd.choice([-1,1])
-        logger.debug(f"Looking random on the position {next_x},{next_y}")
+            # Make the best move
+            best_move = min(moves, key=lambda x: x[2])
+            self.board[best_move[0]] = best_move[1]
+            current_threats = best_move[2]
+            self.moves_made += 1
+            self.threats = current_threats
+
+    def hill_climbing_lateral_steps(self, max_iterations):
+        """Hill climbing algorithm with lateral steps."""
+        current_threats = self.calculate_threats()
+        for _ in range(max_iterations):
+            moves = []
+            lateral_steps = 0
+            for i in range(self.size):
+                for j in range(self.size):
+                    if j != self.board[i]:
+                        # Calculate threats if we move the queen
+                        original_value = self.board[i]
+                        self.board[i] = j
+                        new_threats = self.calculate_threats()
+                        if new_threats < current_threats or \
+                            (new_threats == current_threats and lateral_steps < self.lateral_steps_limit):
+                            if new_threats == current_threats:
+                                lateral_steps += 1
+                            moves.append((i, j, new_threats))
+                        self.board[i] = original_value
+
+            if not moves:
+                break
+
+            # Make the best move
+            best_move = min(moves, key=lambda x: x[2])
+            self.board[best_move[0]] = best_move[1]
+            current_threats = best_move[2]
+            self.moves_made += 1
+            self.threats = current_threats
+
+    def display(self, stats=True):
+        """Display the board by column."""
+        print('_________')
+        for col in range(self.size):
+            line = []
+            for row in range(self.size):
+                if self.board[row] == col:
+                    line.append('Q')
+                else:
+                    line.append('.')
+            print(' '.join(line))
+        if stats:
+            if(self.threats == 0):
+                self.success_times += 1
+            print(f"Moves made: {self.moves_made}")
+            print(f"Threats: {self.threats}")
+
+def create_bar_graph(categories, values):
+    plt.bar(categories, values)
+    plt.title('N-Queens Problem')
+    plt.xlabel('Categories')
+    plt.ylabel('Success rate %')
+    plt.show()
+
+if __name__ == "__main__":
+    size = 4
+    nqueens = NQueens(size)
+    repetitions = 100
+    nqueens.lateral_steps_limit = 2
+    random_queen_placement = True
+    max_search_repetitions = 100
     
-    next_position = (next_x, next_y)
-    threats = 0
-    for orientation in THREAD_RANGE:
-        logger.debug(f"Neighbor Threats: {threats}, Current Threats: {queen.threats} ")
-        threats += search_neighbor_threats(board, next_position, orientation)
-    logger.debug("$$ Calculate threats Out $$")
-    return (next_position, threats)
-
-def init_calculate_threats(board, queen):
-    position = queen.current
-    threats = 0
-    for orientation in THREAD_RANGE:
-        threats += search_neighbor_threats(board, position, orientation)
-    return threats
-
-def hill_climb(queen, board, maximize, reps):
-    """Hill Climb algorithm the also implements all the variants"""
-    global queen_moves
-    for i in range(reps):
-        neighbor = calculate_threats(queen, board, board.shape[0]) #return tuple with the threats and position
-        logger.debug(f"neighbor {neighbor[0]}, {neighbor[1]}")
-        if(maximize):
-            if(neighbor[1] <= queen.threats):
-                return queen.current, queen.threats
-        else:
-            logger.debug(f"checking neighbor threats: {neighbor[1]} vs current threats {queen.threats}")
-            if(neighbor[1] >= queen.threats):
-                logger.debug("threats not better than the neighbors")
-                return queen.current, queen.threats
-        logger.debug("Neighbors threats better")            
-        queen.old_position = queen.current
-        queen.current = neighbor[0]
-        queen.threats = neighbor[1]
-        board[neighbor[0][0],neighbor[0][1]]= 1
-        board[queen.old_position[0],queen.old_position[1]] = 0
-        queen_moves +=1
-        logger.debug(f"New Move For Queen in old position: {queen.old_position}")
-        #print_board(board)
-        logger.debug(f"queen new position {neighbor[0]} old position {queen.old_position}")
-
-def hill_climb_lateral_steps(queen, board, maximize, reps, lateral_step_limit):
-    """Hill Climb algorithm the also implements all the variants"""
-    global queen_moves
-    lateral_steps = 0
-    for i in range(reps):
-        neighbor = calculate_threats(queen, board, board.shape[0]) #return tuple with the threats and position
-        logger.debug(f"neighbor {neighbor[0]}, {neighbor[1]}")
+    categories = ['Hill climbing','Hill climbing + lateral steps']
+    success_rates = []
+    
+    print('Using Hill climbing')
+    for i in range(repetitions):
+        nqueens.moves_made = 0
+        nqueens.threats = 0
         
-        if maximize:
-            improvement = neighbor[1] > queen.threats
-        else:
-            improvement = neighbor[1] < queen.threats
+        nqueens.initialize(random_queen_placement)
+        print('Start state')
+        nqueens.display(False)
+        nqueens.hill_climbing(max_search_repetitions)
+        print('Final state')
+        nqueens.display()    
         
-        if improvement or (neighbor[1] == queen.threats and lateral_steps < lateral_step_limit):
-            if(neighbor[1] == queen.threats):
-                lateral_steps += 1   
-            
-            logger.debug("Neighbors threats better")            
-            queen.old_position = queen.current
-            queen.current = neighbor[0]
-            queen.threats = neighbor[1]
-            queen_moves +=1
-            board[neighbor[0][0],neighbor[0][1]]= 1
-            board[queen.old_position[0],queen.old_position[1]] = 0
-            logger.debug(f"New Move For Queen in old position: {queen.old_position}")
-            #print_board(board)
-            logger.debug(f"queen new position {neighbor[0]} old position {queen.old_position}")
-        else:
-            return queen.current, queen.threats 
-    return queen.current, queen.threats
-
-def init_board_and_queens(random_assigne=False, size=4):
-    board = np.zeros((size, size), dtype=int)
-    queens = []
+    success_rates.append((nqueens.success_times/repetitions)*100)
     
-    #init the board
-    for i in range(size):
-        if random_assigne:
-            y = rd.randint(0, size-1) #random initiation
-        else:
-            y = size - 1 #all the queens at the bottom of the chess board
-        board[i, y] = 1
-        queens.append(Queen((i, y), (i, y), 0))
-
-    for j in range(size):
-        queens[j].threats = init_calculate_threats(board, queens[j])
-        logger.debug(f"Init threats queen{j}: {queens[j].threats}")
-
-    return board, queens
-
-def print_board(board, queens=None):
-    logger.info("---------")
-    for w in range(board.shape[0]):
-        logger.info(f"|{board[0,w]}|{board[1,w]}|{board[2,w]}|{board[3,w]}|")
-    logger.info("---------")
-    if(queens != None):
-        logger.info(f"Queen1:{queens[0].current} Queen2:{queens[1].current} Queen3:{queens[2].current} Queen4:{queens[3].current}")
+    nqueens.success_times = 0
     
-if __name__=="__main__":
-    
-    found_the_solution = 0
-    
-    for i in range(100):
-        logger.debug(f"[Try:{i}]###########")
-        board, queens = init_board_and_queens(True)
-        #print_board(board, queens)
+    print('Using Hill climbing with lateral steps')
+    for i in range(repetitions):
+        nqueens.moves_made = 0
+        nqueens.threats = 0
         
-        queen_moves = 0
-        old_board = board
+        nqueens.initialize(random_queen_placement)
+        print('Start state')
+        nqueens.display(False)
+        nqueens.hill_climbing_lateral_steps(max_search_repetitions)
+        print('Final state')
+        nqueens.display()
         
-        for j in range(len(queens)):
-            queens.sort(key=lambda queen: queen.threats, reverse=True)
-            
-            #state = hill_climb(queens[j], board, False, 4)
-            state = hill_climb_lateral_steps(queens[j], board, False, 4, 2)
-            
-            current_queen = queens[j]
-            if(current_queen.old_position != state[0]):
-                current_queen.current, current_queen.threats = state
-                board[current_queen.current[0],current_queen.current[1]]= 1
-                board[current_queen.old_position[0],current_queen.old_position[1]] = 0
-                current_queen.old_position = state
-                queens[j] = current_queen
-
-        total_threats = queens[0].threats+queens[1].threats+queens[2].threats+queens[3].threats
-        logger.debug(f"[Try:{i}] Total threats: {total_threats}")
-        if total_threats == 0:
-            logger.info("###########################################")
-            logger.info(f"Moves: {queen_moves}")
-            logger.info("____Start board____")
-            print_board(old_board)
-            logger.info("____End board____")
-            print_board(board)
-            found_the_solution += 1
-            
-    logger.info(f"Success rate: {(found_the_solution/100)*100}%")  
+    success_rates.append((nqueens.success_times/repetitions)*100)
+    
+    # show statistics    
+    create_bar_graph(categories, success_rates)
