@@ -1,2 +1,24 @@
-# QueensProblem
- For 4 queens: we want to put 4 queens on a 4x4 chessboard so that none of them threatens the other. Using Hill-Climbing and other optimization methods.
+# N-Queens Problem Solution using Hill Climbing
+
+## Overview
+This project implements the Hill Climbing algorithm to solve the N-Queens problem...
+
+## Requirements
+- Python 3.x
+
+## Installation
+1. (Optional) Create a virtual environment: `python -m venv venv`
+2. Activate the virtual environment
+3. Add the path to the file python.exe of your virtual environment: `#!/<yours venv name>/Scripts/python.exe`
+4. Install required packages: `pip install -r requirements.txt`
+
+## Usage
+Run the script with the command: `python n_queens.py`
+
+## Features
+- Implements Hill Climbing algorithm...
+- Includes a variation with lateral steps...
+- Performance evaluation for different board sizes.
+
+## License
+[Apache License]

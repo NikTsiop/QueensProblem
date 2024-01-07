@@ -1,4 +1,4 @@
-#!/qp_env/Scripts/python.exe
+#!/<yours venv name>/Scripts/python.exe
 import random
 import matplotlib.pyplot as plt
 
